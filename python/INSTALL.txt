@@ -1,0 +1,37 @@
+Deconvolution Studio - installation
+====================================
+
+OPTION A - no Python needed
+---------------------------
+If you received DeconvolutionStudio.exe (or DeconvolutionStudio-Windows.zip),
+just double-click DeconvolutionStudio.exe. Nothing to install.
+Each start takes a few seconds while the exe unpacks itself.
+If Windows SmartScreen warns "Windows protected your PC", click
+"More info" > "Run anyway" (the exe is not code-signed).
+
+To build that exe yourself on a PC with Python, double-click build_exe.bat.
+
+OPTION B - run from source with Python
+--------------------------------------
+
+1. Install Python 3.10 or newer (64-bit) from https://www.python.org/downloads/
+   During setup, tick "Add python.exe to PATH".
+   Keep "tcl/tk and IDLE" enabled (it is on by default).
+
+2. Unzip this folder anywhere, for example C:\Tools\DeconvolutionStudio
+
+3. Double-click "Deconvolution Studio.bat".
+   The first run installs numpy, scipy and matplotlib automatically.
+   This needs internet access and takes 1-2 minutes.
+   A black console window stays open while the app runs. Do not close it.
+
+If something goes wrong, the console window shows the error and it is also
+saved to startup_error.log in this folder.
+
+Manual install (alternative):
+    python -m pip install -r requirements.txt
+    python app.py
+
+Quick start: open an image, leave "PSF source" on "Auto estimate" and press
+Deblur (F5). Drag the divider in Split view to compare before and after.
+More detail is in README.md and ALGORITHMS.md.

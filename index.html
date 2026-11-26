@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deconvolution Studio</title>
+<meta name="description" content="Estimate the point spread function of a blurred image and deblur it with Wiener, Tikhonov, Richardson–Lucy or total-variation deconvolution. Runs entirely in your browser.">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="assets/icon.png" alt="" width="28" height="28">
+    <h1>Deconvolution Studio</h1>
+  </div>
+  <p class="tagline">Estimate the blur, then remove it. Your images never leave this browser.</p>
+  <nav class="toplinks">
+    <button type="button" class="linkbtn" id="btn-help">How it works</button>
+    <a href="https://github.com/teyuan-lab/deconvolution-studio" target="_blank" rel="noopener">Source</a>
+  </nav>
+</header>
+
+<main class="shell">
+  <aside class="rail" aria-label="Controls">
+
+    <section class="step" aria-labelledby="s1">
+      <h2 id="s1"><span class="num">1</span>Image</h2>
+      <div class="row">
+        <label class="btn" for="file-in">Open image…</label>
+        <input type="file" id="file-in" accept="image/*" hidden>
+        <button type="button" class="btn ghost" data-sample="images/cameraman.png">Cameraman</button>
+        <button type="button" class="btn ghost" data-sample="images/astronaut.png">Astronaut</button>
+      </div>
+      <p class="note" id="file-info">You can also drop an image on the viewer or paste one.</p>
+      <label class="field">
+        <span>Working size</span>
+        <select id="work-size">
+          <option value="512" selected>512 px (fast)</option>
+          <option value="768">768 px</option>
+          <option value="1024">1024 px</option>
+          <option value="0">Full resolution (slow)</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="step" aria-labelledby="s2">
+      <h2 id="s2"><span class="num">2</span>Test blur <span class="opt">optional</span></h2>
+      <p class="note">Blur a sharp image yourself to see how much of it can be recovered. Quality scores against the original are then shown.</p>
+      <label class="field">
+        <span>Blur type</span>
+        <select id="tb-type">
+          <option value="gaussian">Gaussian (soft lens)</option>
+          <option value="disk">Defocus disk</option>
+          <option value="motion" selected>Linear motion</option>
+        </select>
+      </label>
+      <label class="slider"><span>Strength</span><input type="range" id="tb-size" min="0.5" max="30" step="0.5" value="15"><output id="tb-size-o"></output></label>
+      <label class="slider" id="tb-angle-row"><span>Angle</span><input type="range" id="tb-angle" min="0" max="180" step="1" value="30"><output id="tb-angle-o"></output></label>
+      <label class="slider"><span>Noise</span><input type="range" id="tb-noise" min="0" max="5" step="0.05" value="0.5"><output id="tb-noise-o"></output></label>
+      <div class="row">
+        <button type="button" class="btn" id="btn-sim">Apply test blur</button>
+        <button type="button" class="btn ghost" id="btn-restore">Restore original</button>
+      </div>
+    </section>
+
+    <section class="step" aria-labelledby="s3">
+      <h2 id="s3"><span class="num">3</span>Point spread function</h2>
+      <label class="field">
+        <span>Source</span>
+        <select id="psf-src">
+          <option value="auto" selected>Auto estimate</option>
+          <option value="gaussian">Gaussian (manual)</option>
+          <option value="disk">Defocus disk (manual)</option>
+          <option value="motion">Linear motion (manual)</option>
+          <option value="blind">Blind kernel (any shape)</option>
+          <option value="point">From point sources</option>
+          <option value="edge">From a straight edge</option>
+          <option value="file">From a file…</option>
+        </select>
+      </label>
+      <div id="psf-params"></div>
+      <p class="note" id="psf-hint"></p>
+      <div class="row">
+        <button type="button" class="btn" id="btn-psf">Get PSF</button>
+      </div>
+      <div class="scope">
+        <div class="scope-frame"><canvas id="psf-canvas" width="152" height="152" aria-label="Point spread function preview"></canvas></div>
+        <div class="scope-info">
+          <p id="psf-desc">No PSF yet.</p>
+          <div class="row tight">
+            <button type="button" class="btn small ghost" id="dl-psf-png" disabled>PNG</button>
+            <button type="button" class="btn small ghost" id="dl-psf-csv" disabled>CSV</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="step" aria-labelledby="s4">
+      <h2 id="s4"><span class="num">4</span>Deblur</h2>
+      <label class="field">
+        <span>Algorithm</span>
+        <select id="alg">
+          <option value="tv" selected>Total variation (recommended)</option>
+          <option value="rl">Richardson–Lucy</option>
+          <option value="rl_tv">Richardson–Lucy + TV</option>
+          <option value="tikhonov">Tikhonov</option>
+          <option value="wiener">Wiener</option>
+        </select>
+      </label>
+      <label class="slider"><span>Regularisation</span><input type="range" id="reg" min="-2" max="2" step="0.1" value="0"><output id="reg-o"></output></label>
+      <label class="slider" id="iter-row"><span>Iterations</span><input type="range" id="iters" min="5" max="300" step="5" value="30"><output id="iters-o"></output></label>
+      <p class="note" id="alg-hint"></p>
+    </section>
+
+    <div class="actionbar">
+      <button type="button" class="btn primary" id="btn-run">Deblur</button>
+      <div class="row tight">
+        <button type="button" class="btn ghost" id="dl-result" disabled>Download result</button>
+        <button type="button" class="btn ghost" id="btn-reuse" disabled>Use result as input</button>
+      </div>
+      <dl class="metrics" id="metrics" hidden></dl>
+    </div>
+  </aside>
+
+  <section class="stage" aria-label="Image viewer">
+    <div class="viewbar" role="toolbar" aria-label="Viewer">
+      <div class="seg" role="radiogroup" aria-label="View mode">
+        <button type="button" role="radio" data-mode="input" aria-checked="true">Input</button>
+        <button type="button" role="radio" data-mode="result" aria-checked="false">Result</button>
+        <button type="button" role="radio" data-mode="split" aria-checked="false">Split</button>
+        <button type="button" role="radio" data-mode="side" aria-checked="false">Side by side</button>
+      </div>
+      <div class="zoomctl">
+        <span id="zoom-o" aria-live="polite">100%</span>
+        <button type="button" class="btn small ghost" id="btn-fit">Fit</button>
+        <button type="button" class="btn small ghost" id="btn-100">100%</button>
+      </div>
+    </div>
+    <div class="viewport" id="viewport">
+      <canvas id="view"></canvas>
+      <div class="tags"><span id="tag-l"></span><span id="tag-r"></span></div>
+      <div class="empty" id="empty">
+        <p>Open an image, drop one here, or start with a sample.</p>
+      </div>
+      <div class="dropveil" id="dropveil">Drop to open</div>
+    </div>
+    <footer class="status" aria-live="polite">
+      <span id="status">Loading…</span>
+      <div class="bar" id="bar" hidden><div id="bar-fill"></div></div>
+    </footer>
+  </section>
+</main>
+
+<dialog id="help">
+  <form method="dialog"><button class="close" aria-label="Close">×</button></form>
+  <h2>How it works</h2>
+  <p>A blurred photo is the sharp scene convolved with a <strong>point spread function</strong> (PSF), the image a single point of light would make, plus noise. Deblurring needs the PSF first, then a <em>regularised</em> inverse that does not blow up the noise.</p>
+  <h3>Getting the PSF</h3>
+  <ul>
+    <li><b>Auto estimate</b> reads the image spectrum: straight dark stripes mean motion blur, rings mean defocus, and a smooth fall-off means Gaussian blur.</li>
+    <li><b>Blind kernel</b> recovers an arbitrary shape, such as curved camera shake, by alternating between a sharp-edge estimate and a kernel update, from coarse to fine scale.</li>
+    <li><b>Point sources</b> measures the PSF directly from stars, beads or small bright dots. <b>Straight edge</b> measures it from a sharp high-contrast edge.</li>
+  </ul>
+  <h3>Deblurring</h3>
+  <ul>
+    <li><b>Total variation</b> keeps edges sharp and removes noise. The image borders are treated as unknown, which avoids ringing.</li>
+    <li><b>Richardson–Lucy</b> is the standard for astronomy and microscopy. More iterations give a sharper but noisier result.</li>
+    <li><b>Tikhonov</b> and <b>Wiener</b> are instant closed-form filters.</li>
+  </ul>
+  <p>Regularisation multiplies the automatically chosen weight: move it right for smoother, left for sharper.</p>
+  <p>Viewer: scroll to zoom, drag to pan, double-click to fit, drag the red divider in Split view. Keys 1–4 switch views.</p>
+  <p class="note">All computation runs locally in your browser (JavaScript, Web Workers). The full theory and measured results are in <a href="https://github.com/teyuan-lab/deconvolution-studio/blob/main/ALGORITHMS.md" target="_blank" rel="noopener">ALGORITHMS.md</a>.</p>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
